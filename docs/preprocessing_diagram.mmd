@@ -1,0 +1,14 @@
+flowchart TD
+    User[User input] --> Mode{Input type}
+    Mode -->|Text| TextRequest[POST /predict]
+    Mode -->|URL| UrlRequest[POST /predict-url]
+
+    TextRequest --> Predictor[FakeNewsPredictor.predict]
+    UrlRequest --> Scraper[URLScraper.scrape_url]
+    Scraper --> Validate[Validate URL]
+    Validate --> Fetch[Fetch HTML with requests]
+    Fetch --> Extract[Extract article text with BeautifulSoup]
+    Extract --> Predictor
+
+    Predictor --> Clean[TextPreprocessor.preprocess]
+    Clean --> Tokens[Cleaned and normalized text]

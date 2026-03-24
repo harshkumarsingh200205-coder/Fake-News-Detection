@@ -1,0 +1,21 @@
+{
+  "accuracy": 0.985631543773669,
+  "precision": 0.9803422756706753,
+  "recall": 0.9897268269904272,
+  "f1_score": 0.9850121993726036,
+  "confusion_matrix": [
+    [
+      4610,
+      85
+    ],
+    [
+      44,
+      4239
+    ]
+  ],
+  "classification_report": "              precision    recall  f1-score   support\n\n        Fake       0.99      0.98      0.99      4695\n        Real       0.98      0.99      0.99      4283\n\n    accuracy                           0.99      8978\n   macro avg       0.99      0.99      0.99      8978\nweighted avg       0.99      0.99      0.99      8978\n",
+  "train_samples": 35911,
+  "validation_samples": 8978,
+  "validation_strategy": "fixed_holdout_v1",
+  "evaluated_at": "2026-03-25T00:41:12.933964"
+}
