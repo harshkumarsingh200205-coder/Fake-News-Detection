@@ -22,18 +22,27 @@ TRAIN_TEST_SPLIT = 0.2
 TRAINING_RANDOM_STATE = 42
 
 
+def resolve_dataset_path(*candidate_names):
+    """Return the first matching dataset filename from the data directory."""
+    for candidate_name in candidate_names:
+        candidate_path = os.path.join(DATA_DIR, candidate_name)
+        if os.path.exists(candidate_path):
+            return candidate_path
+    return None
+
+
 def load_dataset():
     """Load the fake/real news dataset."""
-    fake_path = os.path.join(DATA_DIR, "Fake.csv")
-    true_path = os.path.join(DATA_DIR, "True.csv")
+    fake_path = resolve_dataset_path("Fake.csv", "fake.csv", "False.csv", "false.csv")
+    true_path = resolve_dataset_path("True.csv", "true.csv")
 
-    if not os.path.exists(fake_path) or not os.path.exists(true_path):
+    if not fake_path or not true_path:
         print("\n" + "=" * 50)
         print("DATASET NOT FOUND!")
         print("=" * 50)
         print("Please download from:")
         print("https://www.kaggle.com/clmentbisaillon/fake-and-real-news-dataset")
-        print(f"\nPlace Fake.csv and True.csv in: {DATA_DIR}")
+        print(f"\nPlace Fake.csv/False.csv and True.csv in: {DATA_DIR}")
         return None, None
 
     print(f"\nLoading dataset from {DATA_DIR}...")
