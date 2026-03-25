@@ -169,7 +169,7 @@ The repo also contains Next.js route handlers under `frontend/app/api/`, but the
 - Place the Kaggle dataset files `Fake.csv` and `True.csv` inside `backend/data/`
 - Running training writes model files, metrics, and plots into `backend/models/`
 - Optional NLTK downloads are stored locally under `backend/nltk_data/`
-- These generated assets are ignored so the repository stays lightweight and review-friendly
+- Large generated assets are ignored so the repository stays lightweight, while a few presentation plot images may still be committed for documentation/demo purposes
 
 ### Prepare the dataset
 

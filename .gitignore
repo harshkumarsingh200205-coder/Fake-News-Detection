@@ -26,6 +26,10 @@ backend/data/*
 !backend/data/README.md
 backend/models/*
 !backend/models/README.md
+!backend/models/confusion_matrix.png
+!backend/models/dataset_distribution.png
+!backend/models/keyword_importance.png
+!backend/models/metrics_plot.png
 backend/*.log
 
 # Environment files

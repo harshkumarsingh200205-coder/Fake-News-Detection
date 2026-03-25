@@ -7,4 +7,4 @@ Training and evaluation outputs are written here during local development, for e
 - `model_metrics.json`
 - generated plot images
 
-These files are ignored in Git because they are generated artifacts, not source code.
+Large generated artifacts are typically ignored in Git. A few plot images may still be committed when they are useful for project presentation or documentation.
