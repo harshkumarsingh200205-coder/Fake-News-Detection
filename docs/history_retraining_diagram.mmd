@@ -3,7 +3,7 @@ flowchart TD
     SaveHistory --> HistoryDb[(SQLite query_history)]
 
     HistoryDb --> HistoryApi[GET /history and /history/stats]
-    HistoryDb --> VerifyApi[POST /history/:id/verify]
+    HistoryDb --> VerifyApi[POST /history/{entry_id}/verify]
     VerifyApi --> Verified[verified_label plus verified_at stored]
 
     Response --> AutoCheck[maybe_auto_retrain]

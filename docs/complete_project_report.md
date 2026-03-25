@@ -1,183 +1,321 @@
-## ✅ Project Summary
+# Complete Project Report
 
-- Project name: Fake News Detector
-- Type: Full-stack web app
-- Backend: Python FastAPI
-- Frontend: Next.js + React + Tailwind (shadcn UI)
-- Model: TF-IDF + Logistic Regression
-- Dataset: Kaggle ISOT Fake and Real News (Fake.csv, True.csv)
-- Output: classification (FAKE/REAL), confidence, top keywords, metrics/history
+## Project Summary
 
-## 🗂️ File structure
+- Project name: `Fake News Detector`
+- Type: full-stack web application
+- Frontend: Next.js 16, React 19, TypeScript, Tailwind CSS, shadcn/ui
+- Backend: FastAPI, Pydantic, SQLite
+- Model: TF-IDF plus Logistic Regression
+- Input modes: pasted article text and article URL scraping
+- Output: label, confidence, class probabilities, keyword explanation, metrics, history, retrain status
 
-```
-/
-  README.md
-  diagram.mmd
-  pipeline.mmd
-  docs/flowchart.md
-  documentation/complete_project_report.md
-  backend/
-    main.py
-    inference.py
-    model.py
-    preprocessing.py
-    train.py
-    generate_plots.py
-    requirements.txt
-    data/Fake.csv
-    data/True.csv
-    models/fake_news_model.joblib
-    models/model_metrics.json
-    nltk_data/
-  frontend/
-    src/app/page.tsx
-    src/lib/backend.ts
-    app/api/
-      health/route.ts
-      metrics/route.ts
-      history/route.ts
-      predict/route.ts
-      predict-url/route.ts
-    src/components/ui/
-    src/hooks/use-toast.ts
-    src/hooks/use-mobile.ts
-    …
-```
+## What Is Implemented Today
 
-## 🧩 Backend
+The current repository includes:
 
-### backend/main.py
+- the web application in `frontend/`
+- the FastAPI backend in `backend/`
+- the base training dataset in `backend/data/Fake.csv` and `backend/data/True.csv`
+- SQLite-backed history persistence
+- offline training and verified-label retraining logic
+- backend tests plus frontend lint, typecheck, and build steps
 
-- FastAPI app with lifespan initialization
-- CORS open access
-- Endpoints:
-  - `/` (info)
-  - `/health` (status, model_loaded)
-  - `/predict` (text predictions)
-  - `/predict-url` (URL scraping + predict)
-  - `/metrics` (model metrics)
-  - `/history` (prediction history)
-  - `/history/stats` (fake/real counts, avg confidence)
-- Pydantic request/response models
+The trained model artifact is optional at runtime:
 
-### backend/preprocessing.py
+- if `backend/models/fake_news_model.joblib` exists, it is loaded
+- if it does not exist or is invalid, the backend falls back to heuristic demo predictions
 
-- `TextPreprocessor`:
-  - HTML, URL, email, mention, hashtag cleanup
-  - lowercase, punctuation/numbers cleaning
-  - tokenization (NLTK `word_tokenize`)
-  - stopword removal (`nltk.corpus.stopwords` + custom)
-  - lemmatization (`WordNetLemmatizer`)
-  - minimum word length filter
-- `download_nltk_resources`: auto-download required resources
-- `get_preprocessor()` factory
+## Code Layout
 
-### backend/model.py
+```text
+backend/
+  main.py
+  db.py
+  inference.py
+  preprocessing.py
+  model.py
+  train.py
+  generate_plots.py
+  data/
+    Fake.csv
+    True.csv
+  models/
+    README.md
+    confusion_matrix.png
+    dataset_distribution.png
+    keyword_importance.png
+    metrics_plot.png
+  nltk_data/
+  tests/
 
-- `FakeNewsModel` class:
-  - TF-IDF vectorizer + logistic regression classifier pipeline
-  - training: `fit()`; predict: `predict` and `predict_proba`
-  - `get_keyword_importance(text, top_n)` using coefficient \* tfidf
-  - `get_top_fake_keywords` and `get_top_real_keywords`
-  - `evaluate` metrics + confusion matrix; `cross_validate`
-  - `save` and `load` for persistence
-  - `get_model_info` metadata
-- `get_model()` loads persisted model if exists
+frontend/
+  src/app/page.tsx
+  src/lib/backend.ts
+  src/components/ui/
+  app/api/
+    health/route.ts
+    history/route.ts
+    history/[id]/verify/route.ts
+    metrics/route.ts
+    predict/route.ts
+    predict-url/route.ts
+    retrain/route.ts
+    retrain-status/route.ts
+  .env.local.example
 
-### backend/inference.py
-
-- Global singletons `_model`, `_preprocessor`
-- `URLScraper`: URL validation, fetch (requests), parse (BeautifulSoup)
-- `FakeNewsPredictor`:
-  - `predict(text)`: preprocess + model predict/proba + keyword extraction
-  - `_mock_prediction()`: heuristic fallback if model missing
-  - `predict_from_url(url)`: scrape then predict
-
-### backend/train.py
-
-- `load_dataset()`: read CSVs, label fake=0, real=1, shuffle
-- `preprocess_dataset()`: preprocess each article
-- `train_model()`: train/test split, fit, evaluate
-- `main()`: complete training cycle + sample quick tests
-
-## 🖥️ Frontend
-
-### frontend/src/lib/backend.ts
-
-- `BACKEND_URL` from env or default
-- `buildBackendUrl(path)` and `fetchBackend(path, init)`
-
-### frontend/src/app/page.tsx
-
-- states: input modes, input values, result, history, metrics, status, errors, dark mode
-- `loadBackendData()`: health + metrics + history
-- `handlePredict()`: POST predict/predict-url, error handling, history update
-- chart config via Recharts
-- `normalizePredictionLabel`, keyword mapping, history filtering
-
-### frontend/app/api/\*/route.ts
-
-- proxy calls: `/api/health`, `/api/metrics`, `/api/history`, `/api/predict`, `/api/predict-url`
-
-## 🔄 Pipeline flow (diagram/pipeline files)
-
-### diagram.mmd
-
-- user input → endpoint → preprocess → model → return prediction
-
-### pipeline.mmd
-
-- includes training pipeline + inference path
-
-## 📊 Model & Data
-
-- dataset: `Fake.csv` + `True.csv`
-- vectorization: TF-IDF uni/bigram
-- classifier: LogisticRegression (balanced weights)
-- threshold: 0.5
-- output: fake & real probability, determination by max value
-
-## 📈 Metrics & reporting
-
-- accuracy, precision, recall, F1, confusion matrix
-- saved at `backend/models/model_metrics.json`
-
-## 🧪 Quick local tests
-
-Backend:
-
-```bash
-cd backend
-python main.py
+docs/
+  system-architecture.md
+  flowchart.md
+  pipeline-overview.md
+  frontend-backend-flow.md
+  preprocessing-pipeline.md
+  inference-pipeline.md
+  history-persistence-pipeline.md
+  training-retraining-pipeline.md
 ```
 
-Frontend:
+## Backend Responsibilities
 
-```bash
-cd frontend
-npm install
-npm run dev
+### `backend/main.py`
+
+The FastAPI app currently provides:
+
+- `GET /`
+- `GET /health`
+- `POST /predict`
+- `POST /predict-url`
+- `GET /metrics`
+- `GET /history`
+- `GET /history/stats`
+- `POST /history/{entry_id}/verify`
+- `GET /training/stats`
+- `POST /retrain`
+- `GET /retrain/status`
+
+It also:
+
+- initializes SQLite on startup
+- initializes the predictor path
+- stores prediction history
+- triggers periodic auto-retraining checks
+
+### `backend/db.py`
+
+The SQLite layer stores:
+
+- text or URL source
+- prediction label
+- confidence and class probabilities
+- keyword explanation payload
+- processing time
+- error details
+- `verified_label` and `verified_at`
+- creation timestamp
+
+Retraining currently requires at least `50` verified samples after preprocessing.
+
+### `backend/inference.py`
+
+This module provides:
+
+- lazy model and preprocessor loading
+- text prediction
+- URL scraping with `requests`
+- article extraction with BeautifulSoup
+- keyword importance output
+- heuristic fallback predictions when no fitted model is available
+
+### `backend/preprocessing.py`
+
+The preprocessing pipeline performs:
+
+- HTML, URL, email, mention, and hashtag cleanup
+- lowercasing
+- punctuation cleanup
+- tokenization
+- stopword removal
+- optional lemmatization
+
+It prefers bundled local NLTK resources and falls back gracefully when optional resources are missing.
+
+### `backend/model.py`
+
+The model wrapper encapsulates:
+
+- `TfidfVectorizer`
+- balanced `LogisticRegression`
+- prediction and probability methods
+- keyword importance extraction
+- evaluation metrics
+- save and load behavior
+
+Current implemented configuration in code:
+
+- `max_features=10000`
+- `ngram_range=(1, 2)`
+- `min_df=2`
+- `max_df=0.95`
+- `sublinear_tf=True`
+- `strip_accents='unicode'`
+- `solver='lbfgs'`
+- `class_weight='balanced'`
+- `max_iter=1000`
+- `C=1.0`
+- `random_state=42`
+
+### `backend/train.py`
+
+The training script:
+
+- loads `Fake.csv`, `fake.csv`, `False.csv`, or `false.csv`
+- loads `True.csv` or `true.csv`
+- constructs `full_text` from title plus article body
+- preprocesses the dataset
+- builds a deterministic train/validation split
+- trains and evaluates the model
+- saves the model, metrics, and split bundle
+
+Verified retraining reuses the saved base training split and evaluates on the same fixed validation holdout.
+
+## Frontend Responsibilities
+
+### `frontend/src/lib/backend.ts`
+
+This module resolves the backend base URL from:
+
+1. `BACKEND_URL`
+2. `NEXT_PUBLIC_BACKEND_URL`
+3. a default of `http://127.0.0.1:8000`
+
+### `frontend/src/app/page.tsx`
+
+The current page is the main UI surface. It currently supports:
+
+- backend health checks
+- prediction from text
+- prediction from URL
+- metrics and charts
+- history browsing
+- retrain status display
+- manual retraining
+- plain-text report download
+
+Important limitation:
+
+- the current page does not expose a verification control for history items
+
+### `frontend/app/api/*`
+
+The repo includes Next.js route handlers that proxy to FastAPI for:
+
+- health
+- history
+- verification
+- metrics
+- prediction
+- URL prediction
+- retraining
+- retrain status
+
+These handlers exist, but the current page mostly calls the FastAPI backend directly via `fetchBackend()`.
+
+## Runtime Flow
+
+### Prediction Flow
+
+```text
+Frontend submits text or URL
+-> FastAPI validates the request
+-> URL input is scraped and converted to plain text if needed
+-> TextPreprocessor normalizes the text
+-> FakeNewsModel returns class probabilities when a fitted model exists
+-> fallback heuristics run when no fitted model exists
+-> keyword importance is attached when possible
+-> history is stored in SQLite
+-> result is returned to the UI
 ```
 
-API:
+### Verification Flow
 
-```bash
-curl -X POST http://127.0.0.1:8000/predict \
-  -H 'Content-Type: application/json' \
-  -d '{"text":"BREAKING: ..."}'
+```text
+Client calls POST /history/{entry_id}/verify
+-> FastAPI validates the entry and label
+-> verified label is saved in SQLite
+-> entry becomes eligible for retraining
 ```
 
-## 🚀 Deployment notes
+This flow is implemented in the backend and route handlers, but not yet exposed in the current web page.
 
-- ensure backend hosted and CORS configured
-- set `NEXT_PUBLIC_BACKEND_URL` for production
-- keep `backend/models`, `backend/nltk_data` persisted
+### Retraining Flow
 
-## 🛠️ Enhancements
+```text
+Client calls POST /retrain
+-> verified samples are loaded from SQLite
+-> saved base split is loaded from training_splits.joblib
+-> verified samples are appended to the base training set
+-> model retrains
+-> evaluation runs on the fixed holdout
+-> model and metrics are saved
+-> in-memory model is replaced
+```
 
-- retrain endpoint
-- streaming / async queue with batch inference
-- per-user history + authentication
-- add evaluation charts in UI
-- multiple language support
+Auto-retraining is only checked periodically. By default, the check runs after every `50` successful predictions.
+
+## Local Development
+
+### Setup
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+```
+
+### Run both apps
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1
+```
+
+### Run local checks
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\check.ps1
+```
+
+The setup script creates `backend/.env` from `backend/.env.example` and `frontend/.env.local` from `frontend/.env.local.example` when those files are missing.
+
+## Environment Variables
+
+### Frontend
+
+```env
+BACKEND_URL=http://127.0.0.1:8000
+```
+
+### Backend
+
+```env
+FAKE_NEWS_DB_FILENAME=fake_news_history.db
+FAKE_NEWS_AUTO_RETRAIN_CHECK_INTERVAL=50
+FAKE_NEWS_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+```
+
+## Focused Pipeline Docs
+
+- [pipeline-overview.md](pipeline-overview.md)
+- [frontend-backend-flow.md](frontend-backend-flow.md)
+- [preprocessing-pipeline.md](preprocessing-pipeline.md)
+- [inference-pipeline.md](inference-pipeline.md)
+- [history-persistence-pipeline.md](history-persistence-pipeline.md)
+- [training-retraining-pipeline.md](training-retraining-pipeline.md)
+
+## Known Constraints
+
+- fake-news detection is probabilistic and not authoritative
+- scraping can fail on unsupported or heavily scripted sites
+- verification exists at the API layer, but not yet in the current UI
+- retraining runs in-process and is best suited for local demos or small deployments
+
+## Conclusion
+
+The current codebase is a complete web-based ML application rather than just a model script. It includes a real UI, a real API layer, persisted history, explainable predictions, and a retraining workflow with a fixed holdout strategy. The main functional gap between backend and frontend is that verification is implemented in the API, but not yet surfaced in the page UI.

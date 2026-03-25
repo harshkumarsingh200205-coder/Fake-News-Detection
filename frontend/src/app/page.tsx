@@ -1788,15 +1788,15 @@ export default function FakeNewsDetector() {
                   </CardContent>
                 </Card>
 
-                {/* Recommended TF-IDF Parameters */}
+                {/* Current backend configuration */}
                 <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200 dark:border-slate-700">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-amber-500" />
-                      Optimized TF-IDF Configuration
+                      Current Backend Configuration
                     </CardTitle>
                     <CardDescription>
-                      Recommended parameters for improved accuracy
+                      Actual TF-IDF and classifier settings used by the training code
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1804,33 +1804,63 @@ export default function FakeNewsDetector() {
                       {[
                         {
                           param: "max_features",
-                          value: "15,000",
-                          desc: "Larger vocabulary for better coverage",
+                          value: "10,000",
+                          desc: "Maximum TF-IDF vocabulary size",
                         },
                         {
                           param: "ngram_range",
                           value: "(1, 2)",
-                          desc: "Unigrams + Bigrams capture phrases",
+                          desc: "Uses unigrams and bigrams",
                         },
                         {
                           param: "min_df",
                           value: "2",
-                          desc: "Remove rare words (noise reduction)",
+                          desc: "Drops very rare terms",
                         },
                         {
                           param: "max_df",
-                          value: "0.85",
-                          desc: "Remove overly common words",
+                          value: "0.95",
+                          desc: "Drops overly common terms",
                         },
                         {
                           param: "sublinear_tf",
                           value: "True",
-                          desc: "Log scaling for better weights",
+                          desc: "Applies logarithmic term-frequency scaling",
                         },
                         {
-                          param: "stop_words",
-                          value: '"english"',
-                          desc: "Built-in stopword removal",
+                          param: "strip_accents",
+                          value: '"unicode"',
+                          desc: "Normalizes accented text before vectorization",
+                        },
+                        {
+                          param: "classifier",
+                          value: "LogReg",
+                          desc: "Uses Logistic Regression for classification",
+                        },
+                        {
+                          param: "class_weight",
+                          value: '"balanced"',
+                          desc: "Compensates for class imbalance",
+                        },
+                        {
+                          param: "solver",
+                          value: '"lbfgs"',
+                          desc: "Optimization algorithm used by the classifier",
+                        },
+                        {
+                          param: "max_iter",
+                          value: "1000",
+                          desc: "Maximum classifier training iterations",
+                        },
+                        {
+                          param: "C",
+                          value: "1.0",
+                          desc: "Inverse regularization strength",
+                        },
+                        {
+                          param: "random_state",
+                          value: "42",
+                          desc: "Keeps training and split behavior reproducible",
                         },
                       ].map((item, i) => (
                         <motion.div

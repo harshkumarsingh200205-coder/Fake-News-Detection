@@ -1,554 +1,324 @@
 # System Architecture
 
-This project is best understood as a full-stack ML product with five cooperating layers:
+This document describes the architecture that is currently implemented in the repository.
 
-1. `Presentation layer` in Next.js for the user experience
-2. `Web integration layer` in Next.js route handlers for backend proxying
-3. `Application API layer` in FastAPI for orchestration and validation
-4. `ML pipeline layer` for preprocessing, inference, explanation, and retraining
-5. `Persistence layer` for SQLite history plus model artifacts on disk
+At a high level, the project is a web-first full-stack ML application with:
 
-The current repository already implements most of this shape. The architecture below documents the real system as it exists today, and also defines the recommended target structure for scaling the app cleanly.
+1. a Next.js frontend for the user interface
+2. a FastAPI backend for orchestration and API endpoints
+3. a TF-IDF plus Logistic Regression pipeline for preprocessing, inference, and evaluation
+4. SQLite plus on-disk artifacts for persistence
 
-## Architecture Goals
-
-- Keep the app easy to demo locally
-- Keep the ML pipeline interpretable and fast
-- Preserve a clean separation between UI, API orchestration, and model logic
-- Support a feedback loop through human verification and retraining
-- Avoid infrastructure that is too heavy for a student or portfolio project
-
-## Repository-to-Architecture Mapping
-
-```text
-frontend/
-  src/app/page.tsx              -> UI shell and feature orchestration
-  app/api/**/route.ts           -> Next.js API proxy/BFF layer
-  src/lib/backend.ts            -> shared backend client
-  src/components/ui/*           -> reusable UI primitives
-
-backend/
-  main.py                       -> FastAPI entrypoint and application services
-  inference.py                  -> prediction and URL scraping pipeline
-  preprocessing.py              -> text cleaning and token normalization
-  model.py                      -> TF-IDF + Logistic Regression model wrapper
-  train.py                      -> offline training and verified retraining flow
-  db.py                         -> SQLite persistence and training-data queries
-  models/*                      -> persisted model, metrics, plots, training split
-
-docs/
-  system-architecture.md        -> full architecture design
-```
-
-## System Context
+## Runtime Topology
 
 ```mermaid
 flowchart LR
-    User[End User]
-    Browser[Next.js Web App]
-    BFF[Next.js Route Handlers]
-    API[FastAPI Backend]
-    Infer[Inference Service]
-    Train[Training Service]
-    DB[(SQLite History DB)]
-    Artifacts[(Model Artifacts)]
-    Dataset[(Base CSV Dataset)]
+    User[End user]
+    Frontend[Next.js app]
+    API[FastAPI app]
+    Predictor[Inference pipeline]
+    DB[(SQLite history)]
+    Artifacts[(Model artifacts)]
+    Dataset[(CSV dataset)]
 
-    User --> Browser
-    Browser --> BFF
-    Browser -. current direct calls .-> API
-    BFF --> API
-    API --> Infer
+    User --> Frontend
+    Frontend --> API
+    API --> Predictor
     API --> DB
-    API --> Train
-    Infer --> Artifacts
-    Train --> Dataset
-    Train --> DB
-    Train --> Artifacts
+    Predictor --> Artifacts
+    API --> Artifacts
+    API --> Dataset
 ```
 
-## Logical Architecture
-
-### 1. Presentation Layer
-
-The presentation layer lives in Next.js and is responsible for:
-
-- text and URL submission
-- displaying prediction confidence and keyword explanations
-- showing model metrics and backend health
-- browsing history
-- submitting verified labels
-- initiating retraining
-
-Current implementation notes:
-
-- The main UI is concentrated in `frontend/src/app/page.tsx`
-- Reusable primitives are already isolated under `frontend/src/components/ui`
-- The page currently performs most feature orchestration client-side
-
-Recommended target structure:
+## Codebase Mapping
 
 ```text
-frontend/src/
-  app/
-    page.tsx
-  features/
-    prediction/
-    history/
-    metrics/
-    retraining/
-    health/
-  components/
-    layout/
-    charts/
-    shared/
+frontend/
+  src/app/page.tsx                  -> current main web UI
+  src/lib/backend.ts                -> backend URL resolution and fetch helper
+  app/api/**/route.ts               -> optional Next.js proxy routes
+  src/components/ui/*               -> reusable UI primitives
+
+backend/
+  main.py                           -> FastAPI entrypoint and endpoint orchestration
+  db.py                             -> SQLite schema and query helpers
+  inference.py                      -> prediction pipeline and URL scraping
+  preprocessing.py                  -> text cleanup and normalization
+  model.py                          -> TF-IDF + Logistic Regression wrapper
+  train.py                          -> offline training and verified retraining
+  data/                             -> dataset CSVs
+  models/                           -> model artifact, metrics, plots, training split
+  nltk_data/                        -> local NLP resources when available
+
+scripts/
+  setup.ps1                         -> local bootstrap
+  dev.ps1                           -> launches backend and frontend shells
+  check.ps1                         -> local test/lint/build checks
 ```
 
-This keeps the page shell thin and moves business-specific UI logic into dedicated feature modules.
+## Frontend Layer
 
-### 2. Web Integration Layer
+The current user-facing app lives in `frontend/src/app/page.tsx`.
 
-The repo already contains a lightweight BFF-style layer in `frontend/app/api/**/route.ts` for:
+What the current page does:
 
-- `/api/predict`
-- `/api/predict-url`
+- checks backend health
+- loads metrics and recent history
+- submits text predictions
+- submits URL predictions
+- shows charts and summary metrics
+- exposes retraining status and a manual retrain button
+- lets the user download a plain-text analysis report
+
+What the current page does not do yet:
+
+- it does not expose a UI control for `POST /history/{entry_id}/verify`
+
+That distinction matters because verification exists in the backend, database layer, and Next.js route handlers, but not in the main page UI.
+
+## Web Integration Layer
+
+The repository includes Next.js route handlers under `frontend/app/api/` for:
+
+- `/api/health`
 - `/api/history`
 - `/api/history/[id]/verify`
 - `/api/metrics`
-- `/api/health`
+- `/api/predict`
+- `/api/predict-url`
 - `/api/retrain`
 - `/api/retrain-status`
 
-Responsibilities of this layer:
+These handlers proxy requests to FastAPI through `frontend/src/lib/backend.ts`.
 
-- hide the backend base URL from browser components
-- normalize backend failures into UI-safe responses
-- provide a stable contract for the frontend
-- create a future place for auth, rate limiting, and caching
+Important current behavior:
 
-Important design note:
+- the main page mostly calls `fetchBackend()` directly
+- the Next.js route handlers exist, but they are not the primary request path for the current UI
 
-The current UI mostly calls `fetchBackend()` directly against FastAPI. For a cleaner production architecture, the browser should call the Next.js `/api/*` routes, and only the route handlers should call FastAPI.
-
-Recommended browser path:
+So the effective browser flow today is usually:
 
 ```text
-Browser -> Next.js route handler -> FastAPI -> ML/Data services
+Browser -> FastAPI
 ```
 
-### 3. Application API Layer
+## FastAPI Application Layer
 
-FastAPI in `backend/main.py` acts as the orchestration layer. It owns:
+`backend/main.py` is the orchestration layer. It owns:
 
-- request validation with Pydantic
-- endpoint contracts
-- application startup and dependency initialization
-- history insertion
-- verification workflow
-- retraining triggers
+- app startup and shutdown
+- CORS configuration
+- Pydantic request and response models
+- history persistence after predictions
+- verified-label retraining flow
 - periodic auto-retraining checks
 
-Core API surface:
+### Current backend routes
 
+- `GET /`
+- `GET /health`
 - `POST /predict`
 - `POST /predict-url`
 - `GET /metrics`
 - `GET /history`
 - `GET /history/stats`
-- `POST /history/{id}/verify`
+- `POST /history/{entry_id}/verify`
 - `GET /training/stats`
 - `POST /retrain`
 - `GET /retrain/status`
-- `GET /health`
 
-This layer should remain thin. It should coordinate workflows, not contain model details.
+### Startup behavior
 
-### 4. ML Pipeline Layer
+On startup, the backend:
 
-The ML layer is split into four focused modules.
+1. initializes the SQLite schema with `init_db()`
+2. creates the shared predictor path through `FakeNewsPredictor()`
+3. tries to load a saved model artifact from `backend/models/fake_news_model.joblib`
 
-#### Preprocessing
+If the model artifact is missing or invalid, prediction still works through the fallback heuristic mode in `backend/inference.py`.
+
+## ML Pipeline Layer
+
+The ML implementation is split across four modules.
+
+### Preprocessing
 
 `backend/preprocessing.py` handles:
 
-- HTML and URL cleanup
-- punctuation cleanup
+- HTML, URL, email, mention, and hashtag cleanup
+- lowercasing
+- punctuation removal
 - tokenization
 - stopword removal
 - optional lemmatization
-- fallback behavior when NLTK assets are unavailable
+- fallback behavior when optional NLTK resources are unavailable
 
-#### Inference
+The code prefers bundled local NLTK resources from `backend/nltk_data/`. If some resources are missing, it falls back to regex tokenization or sklearn's English stopword set where possible.
+
+### Inference
 
 `backend/inference.py` handles:
 
-- lazy model and preprocessor initialization
-- prediction on preprocessed text
-- URL scraping and content extraction
+- lazy loading of the model and preprocessor
+- model reload if a saved artifact appears after startup
+- text prediction
+- URL validation, fetch, and article extraction
 - keyword importance extraction
-- fallback demo predictions when no trained model is available
+- heuristic fallback predictions when the model is not fitted
 
-#### Model Wrapper
+### Model Wrapper
 
 `backend/model.py` encapsulates:
 
-- TF-IDF vectorizer
-- Logistic Regression classifier
-- probability scoring
-- keyword importance lookup
+- `TfidfVectorizer`
+- balanced `LogisticRegression`
+- prediction and probability scoring
+- keyword importance extraction
 - evaluation metrics
-- model artifact loading and saving
+- save and load behavior
 
-#### Training and Retraining
+Current implemented defaults:
 
-`backend/train.py` handles:
+- `max_features=10000`
+- `ngram_range=(1, 2)`
+- `min_df=2`
+- `max_df=0.95`
+- `sublinear_tf=True`
+- `strip_accents='unicode'`
+- `class_weight='balanced'`
+- `solver='lbfgs'`
+- `max_iter=1000`
+- `C=1.0`
+- `random_state=42`
 
-- base dataset loading from CSV
-- deterministic preprocessing
-- fixed train/validation split generation
-- metrics calculation
-- retraining bundle creation from verified labels plus base split
+### Training and Verified Retraining
 
-This is a good architecture for the chosen model family because it keeps the pipeline explainable and deterministic.
+`backend/train.py` implements:
 
-### 5. Persistence Layer
+- dataset loading from `backend/data/Fake.csv`, `fake.csv`, `False.csv`, or `false.csv`
+- positive-class loading from `backend/data/True.csv` or `true.csv`
+- preprocessing of the full dataset
+- deterministic train/validation split generation
+- persistence of `training_splits.joblib`
+- model training and evaluation
+- retraining bundle creation from verified labels plus the saved base training split
 
-The app persists two kinds of state.
+Verified retraining in `backend/main.py` works like this:
 
-#### Transactional State
+1. load verified examples from SQLite
+2. require at least `50` verified samples after preprocessing
+3. append verified examples to the saved base training split
+4. evaluate on the fixed validation holdout
+5. save the new model and metrics
+6. replace the in-memory model for future predictions
 
-SQLite stores prediction history in `query_history` with fields for:
+Auto-retraining is only checked periodically. By default, `maybe_auto_retrain()` runs the check after every `50` successful predictions, controlled by `FAKE_NEWS_AUTO_RETRAIN_CHECK_INTERVAL`.
 
-- source
-- original text or URL
-- prediction
+## Persistence Layer
+
+The application stores two kinds of state.
+
+### Runtime State
+
+`backend/db.py` manages a local SQLite database containing the `query_history` table.
+
+Stored fields include:
+
+- request source
+- input text or URL
+- prediction label
 - confidence
 - fake and real probabilities
 - keywords
 - processing time
-- error
+- error text
 - verified label
 - verification timestamp
 - created timestamp
 
 This supports:
 
-- auditable prediction history
-- metrics for recent usage
-- verified training samples
+- recent history display
+- usage statistics
+- verified training data collection
 
-#### ML State
+### Model State
 
-The `backend/models/` directory stores:
+`backend/models/` stores:
 
-- trained model artifact
-- model metrics JSON
-- deterministic training split bundle
-- generated plots
+- `fake_news_model.joblib`
+- `model_metrics.json`
+- `training_splits.joblib`
+- generated evaluation plots
 
-This separation is important:
+These are training outputs. The code supports both cases:
 
-- SQLite tracks runtime user activity
-- artifact files track the current model version and training outputs
+- a saved model exists and is loaded
+- no saved model exists and inference falls back to heuristics
 
-## Component View
+### Dataset State
 
-```mermaid
-flowchart TD
-    subgraph Frontend
-        UI[React UI]
-        Charts[Metrics and History Visuals]
-        APIRoutes[Next.js API Routes]
-    end
+`backend/data/` stores the base dataset CSVs used by offline training. The current repository includes those CSVs, so the training pipeline can run without a separate download step.
 
-    subgraph Backend
-        FastAPI[FastAPI Controllers]
-        Service[Prediction and Retrain Workflows]
-        DBRepo[SQLite Repository]
-    end
+## Current Request Flows
 
-    subgraph ML
-        Scraper[URL Scraper]
-        Pre[Text Preprocessor]
-        Predictor[FakeNewsPredictor]
-        Model[FakeNewsModel]
-        Trainer[Training Pipeline]
-    end
-
-    subgraph Storage
-        SQLite[(History DB)]
-        ModelFiles[(Model Files)]
-        CSV[(Training CSVs)]
-    end
-
-    UI --> APIRoutes
-    UI --> Charts
-    APIRoutes --> FastAPI
-    FastAPI --> Service
-    Service --> DBRepo
-    Service --> Scraper
-    Service --> Pre
-    Service --> Predictor
-    Predictor --> Model
-    Trainer --> Pre
-    Trainer --> Model
-    DBRepo --> SQLite
-    Predictor --> ModelFiles
-    Trainer --> ModelFiles
-    Trainer --> CSV
-```
-
-## End-to-End Runtime Flows
-
-### Flow A: Predict from Text
+### Text Prediction
 
 ```text
-User enters article text
--> Next.js UI submits prediction request
--> FastAPI validates payload
--> TextPreprocessor cleans and normalizes text
--> FakeNewsModel returns probabilities
--> Inference layer extracts top keywords
--> API stores history in SQLite
--> API returns prediction payload
--> UI renders result, confidence, and explanation
+User enters text
+-> frontend submits POST /predict
+-> FastAPI validates the request
+-> TextPreprocessor.preprocess() normalizes the text
+-> FakeNewsModel.predict_proba() scores the text when a fitted model exists
+-> fallback heuristic prediction runs if no fitted model is available
+-> keyword importance is attached when possible
+-> prediction is written to SQLite history
+-> response is returned to the UI
 ```
 
-### Flow B: Predict from URL
+### URL Prediction
 
 ```text
 User submits a URL
--> FastAPI validates URL
--> URL scraper downloads article HTML
--> scraper extracts readable article text
--> text enters the same preprocessing + prediction pipeline
--> API stores source text and result in SQLite
--> UI renders prediction and explanation
+-> frontend submits POST /predict-url
+-> FastAPI validates that the URL starts with http:// or https://
+-> URLScraper fetches HTML with requests
+-> BeautifulSoup extracts readable article text
+-> the extracted text goes through the same prediction pipeline
+-> prediction and source text are written to SQLite history
 ```
 
-### Flow C: Verify Historical Prediction
+### Verification
 
 ```text
-User selects a history item
--> user marks label as REAL or FAKE
--> FastAPI updates verified_label and verified_at in SQLite
--> verified entry becomes eligible for retraining
+Client calls POST /history/{entry_id}/verify
+-> FastAPI checks that the history entry exists
+-> FastAPI requires stored source text
+-> verified_label and verified_at are written to SQLite
+-> the entry becomes eligible for retraining
 ```
 
-### Flow D: Retrain with Verified Feedback
+This flow is available at the API layer today, but the current `frontend/src/app/page.tsx` does not yet expose it.
+
+### Retraining
 
 ```text
-Verified entries are loaded from SQLite
--> base deterministic training split is loaded from disk
--> verified samples are preprocessed and appended to base training split
--> model retrains on combined training data
--> evaluation runs on the fixed validation holdout
--> new model and metrics are saved to backend/models/
--> in-memory model is replaced for future predictions
+Client calls POST /retrain
+-> FastAPI loads verified samples from SQLite
+-> base training split is loaded from backend/models/training_splits.joblib
+-> verified samples are preprocessed and appended to the base train split
+-> model is retrained and evaluated on the fixed holdout
+-> model and metrics are saved
+-> cached in-memory model is replaced
 ```
 
-## Deployment Architecture
+## Documentation Map
 
-### Local Development
+Use these focused docs for each major part of the pipeline:
 
-Best fit for the current repo:
-
-```text
-User Browser
-  -> Next.js dev server on :3000
-  -> FastAPI server on :8000
-  -> SQLite file and model artifacts on local disk
-```
-
-Why it works well:
-
-- simple to run in a classroom or demo setting
-- minimal infrastructure
-- fast enough for TF-IDF inference
-- portable across developer machines
-
-### Recommended Production Topology
-
-```mermaid
-flowchart LR
-    User[Browser]
-    Edge[Next.js App]
-    API[FastAPI Service]
-    Worker[Background Retrain Worker]
-    DB[(PostgreSQL or SQLite for small deployments)]
-    Blob[(Artifact Storage)]
-
-    User --> Edge
-    Edge --> API
-    API --> DB
-    API --> Blob
-    Worker --> DB
-    Worker --> Blob
-```
-
-Production recommendations:
-
-- keep Next.js and FastAPI as separate deployable services
-- move long retraining jobs off the request thread into a worker
-- store artifacts in object storage if multiple backend instances are used
-- replace SQLite with PostgreSQL when concurrent write load grows
-
-## Data Contracts
-
-### Prediction Request
-
-```json
-{
-  "text": "Article text...",
-  "return_keywords": true,
-  "top_keywords": 10
-}
-```
-
-### Prediction Response
-
-```json
-{
-  "success": true,
-  "prediction": "REAL",
-  "confidence": 92.5,
-  "fake_probability": 7.5,
-  "real_probability": 92.5,
-  "keywords": [
-    { "word": "official", "importance": 0.84, "type": "real" }
-  ],
-  "processing_time": 0.063,
-  "timestamp": "2026-03-25T01:00:00"
-}
-```
-
-### Verification Request
-
-```json
-{
-  "verified_label": "FAKE"
-}
-```
-
-## Cross-Cutting Concerns
-
-### Error Handling
-
-Current strengths:
-
-- request validation at the API boundary
-- fallback inference mode when no trained model exists
-- persisted error records in history for failed requests
-
-Recommended improvements:
-
-- standardize error response envelopes across all routes
-- add retry-safe handling around URL fetch timeouts
-- return correlation IDs for debugging
-
-### Security
-
-For the current project scope, the main concerns are input safety and outbound URL fetching.
-
-Recommended controls:
-
-- restrict allowed URL schemes to `http` and `https`
-- enforce request size limits
-- add SSRF protections for URL scraping
-- sanitize logs to avoid leaking raw article content unnecessarily
-- add rate limits if the app becomes public
-
-### Observability
-
-Recommended minimal observability stack:
-
-- structured request logs
-- prediction latency measurement
-- retraining start and finish events
-- model version in `/health` and `/metrics`
-- error counters for scraping and preprocessing failures
-
-### Testing
-
-The repo already includes backend tests. The full architecture should support:
-
-- unit tests for preprocessing and model wrappers
-- API tests for prediction, history, and verification endpoints
-- integration tests for retraining flow
-- frontend component tests for result rendering and failure states
-- smoke tests for Next.js proxy routes
-
-## Architectural Decisions
-
-### Why TF-IDF + Logistic Regression
-
-This is the right model architecture for this project because it is:
-
-- fast to train
-- fast to serve
-- easy to explain
-- simple to retrain with verified examples
-- strong enough for a portfolio-quality end-to-end product
-
-### Why SQLite
-
-SQLite is a good fit because:
-
-- the app is single-project and demo-friendly
-- setup is trivial
-- history volume is modest
-- the retraining loop does not require distributed transactions
-
-### Why a Fixed Holdout for Retraining
-
-The training design intentionally keeps evaluation conservative:
-
-- verified user labels are added only to the training side
-- validation data stays stable
-- retraining metrics remain comparable over time
-
-That is a better story than continually re-splitting the dataset after each feedback cycle.
-
-## Recommended Target Refactor Plan
-
-If we continue evolving this app, the cleanest next architecture would be:
-
-1. Browser calls only `frontend/app/api/*`
-2. `frontend/src/app/page.tsx` is split into feature modules
-3. FastAPI endpoints delegate to service functions instead of containing workflow logic inline
-4. retraining moves into an async job or worker
-5. model artifacts get explicit version metadata
-
-Suggested backend structure:
-
-```text
-backend/
-  api/
-    routes/
-  services/
-    prediction_service.py
-    history_service.py
-    retraining_service.py
-  repositories/
-    history_repository.py
-  ml/
-    preprocessing.py
-    inference.py
-    model.py
-    train.py
-```
-
-This keeps the app maintainable without changing its core stack.
-
-## Final Architecture Summary
-
-The full app architecture is:
-
-- `Next.js UI` for interaction and visualization
-- `Next.js API routes` as the web-facing integration layer
-- `FastAPI` as the application orchestration layer
-- `Preprocessing + TF-IDF + Logistic Regression` as the ML core
-- `SQLite + model artifacts` as the persistence boundary
-- `Verified-label retraining` as the feedback loop that turns the demo into a product system
-
-That combination gives this project a strong balance of demo simplicity, explainability, and realistic software architecture.
+- [pipeline-overview.md](pipeline-overview.md)
+- [frontend-backend-flow.md](frontend-backend-flow.md)
+- [preprocessing-pipeline.md](preprocessing-pipeline.md)
+- [inference-pipeline.md](inference-pipeline.md)
+- [history-persistence-pipeline.md](history-persistence-pipeline.md)
+- [training-retraining-pipeline.md](training-retraining-pipeline.md)

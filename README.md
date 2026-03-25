@@ -1,15 +1,20 @@
 # Fake News Detector
 
-A full-stack fake news classification project with a FastAPI backend, a Next.js frontend, SQLite-backed history, and a TF-IDF + Logistic Regression model.
+A web-first fake news classification project with a Next.js frontend, a FastAPI backend, SQLite-backed history, and a TF-IDF plus Logistic Regression model.
 
-The repository is organized for clean GitHub presentation: source code and documentation are committed, while large datasets, trained artifacts, downloaded NLP resources, logs, caches, and local runtime files stay out of version control.
+The repository currently focuses on the web application. The Android/mobile work has been removed, and the active codebase is organized around:
+
+- `frontend/` for the web UI
+- `backend/` for the API, ML pipeline, SQLite history, and retraining logic
+- `docs/` for architecture, flowcharts, and pipeline explanations
 
 ## Current Project Status
 
-- The web UI supports prediction, history, metrics, retrain status, manual retraining, and report download
-- The backend and Next.js route handlers support verifying history entries, but the current main page does not expose a verification control yet
-- The backend can run in demo mode even when no trained model artifact is present
-- Training datasets belong in `backend/data/` and generated model outputs belong in `backend/models/`, but those files are intentionally not committed
+- The web UI supports text prediction, URL prediction, dashboard metrics, history browsing, manual retraining, and plain-text report download
+- The backend and Next.js route handlers support history verification, but the current main page does not yet expose a verify button
+- The backend can run even if no trained model artifact is present by falling back to a heuristic demo mode
+- The repository currently includes the base dataset CSVs in `backend/data/`
+- Generated model artifacts are written to `backend/models/` during training and are typically treated as local outputs
 
 ## Features
 
@@ -18,10 +23,10 @@ The repository is organized for clean GitHub presentation: source code and docum
 - Return `FAKE` or `REAL` with confidence and class probabilities
 - Surface influential keywords for explainability
 - Store prediction history in SQLite
-- Expose history verification endpoints for collecting ground-truth labels
+- Expose verification endpoints for collecting ground-truth labels
 - Retrain the model from verified labels while keeping a fixed validation holdout
-- Check retraining readiness and auto-check for retraining every 50 successful predictions by default
-- Fall back to a demo heuristic mode if a trained model artifact is unavailable
+- Auto-check retraining readiness every 50 successful predictions by default
+- Fall back to demo heuristics when no fitted model is available
 
 ## Tech Stack
 
@@ -43,41 +48,38 @@ flowchart LR
     Retrain --> Model
 ```
 
-See [docs/system-architecture.md](docs/system-architecture.md) for the current code-level architecture.
+See [docs/system-architecture.md](docs/system-architecture.md) for the code-level architecture and [docs/pipeline-overview.md](docs/pipeline-overview.md) for the pipeline map.
 
 ## Repository Structure
 
 ```text
 .
 |-- backend/
-|   |-- README.md
 |   |-- main.py
+|   |-- db.py
 |   |-- inference.py
 |   |-- preprocessing.py
-|   |-- train.py
 |   |-- model.py
-|   |-- db.py
+|   |-- train.py
 |   |-- data/
 |   |-- models/
-|   |-- tests/
-|   |-- requirements.txt
-|   `-- requirements-dev.txt
+|   `-- tests/
 |-- frontend/
 |   |-- src/app/
 |   |-- src/components/
 |   |-- src/lib/
-|   |-- app/api/
-|   |-- public/
-|   |-- .env.local.example
-|   `-- package.json
+|   `-- app/api/
 |-- docs/
 |   |-- system-architecture.md
 |   |-- flowchart.md
-|   `-- complete_project_report.md
+|   |-- complete_project_report.md
+|   |-- pipeline-overview.md
+|   |-- frontend-backend-flow.md
+|   |-- preprocessing-pipeline.md
+|   |-- inference-pipeline.md
+|   |-- history-persistence-pipeline.md
+|   `-- training-retraining-pipeline.md
 |-- scripts/
-|   |-- setup.ps1
-|   |-- dev.ps1
-|   `-- check.ps1
 |-- .github/workflows/ci.yml
 `-- LICENSE
 ```
@@ -124,6 +126,37 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+## How To Run
+
+Use two separate terminals after setup.
+
+### Terminal 1: Run the backend
+
+```powershell
+cd backend
+.\.venv\Scripts\activate
+python main.py
+```
+
+The FastAPI backend starts on `http://127.0.0.1:8000`.
+
+### Terminal 2: Run the frontend
+
+```powershell
+cd frontend
+npm run dev
+```
+
+The Next.js frontend starts on `http://localhost:3000`.
+
+### Open the app
+
+After both servers are running, open:
+
+```text
+http://localhost:3000
+```
+
 ## Environment Configuration
 
 ### Frontend
@@ -162,41 +195,32 @@ Main FastAPI routes in `backend/main.py`:
 - `POST /retrain`
 - `GET /retrain/status`
 
-The repo also contains Next.js route handlers under `frontend/app/api/`, but the current main page mostly calls the FastAPI backend directly through `fetchBackend()`.
+The repository also includes Next.js route handlers under `frontend/app/api/`, but the current main page mostly calls the FastAPI backend directly through `fetchBackend()`.
 
-## Training, Retraining, and Artifacts
+## Data, Model Artifacts, and Algorithms
 
-- Place the Kaggle dataset files `Fake.csv` and `True.csv` inside `backend/data/`
-- Running training writes model files, metrics, and plots into `backend/models/`
-- Optional NLTK downloads are stored locally under `backend/nltk_data/`
-- Large generated assets are ignored so the repository stays lightweight, while a few presentation plot images may still be committed for documentation/demo purposes
+- The training dataset currently lives in `backend/data/Fake.csv` and `backend/data/True.csv`
+- The training loader also accepts `fake.csv`, `False.csv`, `false.csv`, and `true.csv`
+- Training writes `fake_news_model.joblib`, `model_metrics.json`, and `training_splits.joblib` into `backend/models/`
+- If the trained model artifact is missing or invalid, inference falls back to heuristic demo mode so the UI still works
 
-### Prepare the dataset
+### Current ML configuration
 
-Download the dataset from Kaggle:
+The implemented classifier uses:
 
-- https://www.kaggle.com/clmentbisaillon/fake-and-real-news-dataset
+- `TfidfVectorizer(max_features=10000, ngram_range=(1, 2), min_df=2, max_df=0.95, sublinear_tf=True, strip_accents="unicode", lowercase=True)`
+- `LogisticRegression(C=1.0, solver="lbfgs", class_weight="balanced", max_iter=1000, random_state=42)`
 
-Then place these files in `backend/data/`:
+### Current preprocessing behavior
 
-- `Fake.csv`
-- `True.csv`
+The preprocessing pipeline performs:
 
-### Train the model
-
-```powershell
-cd backend
-.\.venv\Scripts\activate
-python train.py
-```
-
-### Regenerate evaluation plots
-
-```powershell
-cd backend
-.\.venv\Scripts\activate
-python generate_plots.py
-```
+- HTML, URL, email, mention, and hashtag cleanup
+- lowercasing
+- punctuation removal
+- tokenization with NLTK when available, otherwise regex fallback
+- stopword removal with NLTK or sklearn fallback
+- optional lemmatization when WordNet is available
 
 ### Retraining behavior
 
@@ -231,26 +255,17 @@ npm run build
 powershell -ExecutionPolicy Bypass -File .\scripts\check.ps1
 ```
 
-## Implementation Notes
-
-- The production model is a TF-IDF vectorizer plus balanced Logistic Regression
-- Training currently uses `max_features=10000`, `ngram_range=(1, 2)`, `min_df=2`, and `max_df=0.95`
-- If the trained model cannot be loaded, inference falls back to a heuristic demo mode so the UI still works
-- URL prediction uses `requests` plus BeautifulSoup-based article extraction in `backend/inference.py`
-- Preprocessing uses local NLTK resources when available and falls back to sklearn stopwords or regex tokenization when optional NLTK resources are missing
-
-## Limitations
-
-- Fake-news detection is probabilistic and should be treated as decision support, not final truth
-- URL scraping quality depends on site structure and may fail on heavily scripted pages
-- The current web UI does not yet expose the verification endpoint, so verified labels must currently be created through the API layer
-- Retraining runs in-process inside the API server, which is fine for local demos but not ideal for larger deployments
-
 ## Related Docs
 
 - [docs/system-architecture.md](docs/system-architecture.md)
 - [docs/flowchart.md](docs/flowchart.md)
 - [docs/complete_project_report.md](docs/complete_project_report.md)
+- [docs/pipeline-overview.md](docs/pipeline-overview.md)
+- [docs/frontend-backend-flow.md](docs/frontend-backend-flow.md)
+- [docs/preprocessing-pipeline.md](docs/preprocessing-pipeline.md)
+- [docs/inference-pipeline.md](docs/inference-pipeline.md)
+- [docs/history-persistence-pipeline.md](docs/history-persistence-pipeline.md)
+- [docs/training-retraining-pipeline.md](docs/training-retraining-pipeline.md)
 
 ## License
 

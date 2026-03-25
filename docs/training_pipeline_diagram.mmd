@@ -1,6 +1,6 @@
 flowchart TD
     Start[train.py main] --> LoadData[load_dataset]
-    LoadData --> Merge[Load Fake.csv and True.csv]
+    LoadData --> Merge[Load Fake.csv or False.csv and True.csv]
     Merge --> Label[Assign labels and build full_text]
     Label --> Prep[preprocess_dataset]
     Prep --> Split[build_training_splits]

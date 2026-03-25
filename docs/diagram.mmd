@@ -3,7 +3,7 @@ flowchart TD
     Frontend -->|Text analysis| PredictText[POST /predict]
     Frontend -->|URL analysis| PredictUrl[POST /predict-url]
     Frontend -->|Dashboard reads| StatusRoutes[GET health, metrics, history, training stats, retrain status]
-    Frontend -->|Verify label| VerifyRoute[POST /history/:id/verify]
+    Frontend -. API available; UI control pending .-> VerifyRoute[POST /history/{entry_id}/verify]
     Frontend -->|Manual retrain| RetrainRoute[POST /retrain]
 
     PredictText --> API[FastAPI backend]
@@ -48,7 +48,7 @@ flowchart TD
     subgraph Feedback[Verification and retraining loop]
         API --> VerifyEntry[get_history_entry plus verify_history_entry]
         VerifyEntry --> HistoryDb
-        API --> AutoCheck[maybe_auto_retrain every 50 successful predictions]
+        API --> AutoCheck[maybe_auto_retrain every 50 successful predictions by default]
         AutoCheck --> RetrainFlow[run_verified_retraining]
         API --> RetrainFlow
         RetrainFlow --> VerifiedData[get_verified_training_data]
@@ -60,7 +60,7 @@ flowchart TD
     end
 
     subgraph Training[Offline training pipeline]
-        TrainPy[train.py main] --> LoadData[load_dataset Fake.csv plus True.csv]
+        TrainPy[train.py main] --> LoadData[load_dataset Fake.csv or False.csv plus True.csv]
         LoadData --> PrepData[preprocess_dataset]
         PrepData --> BuildSplit[build_training_splits]
         BuildSplit --> FitModel[FakeNewsModel.fit]
