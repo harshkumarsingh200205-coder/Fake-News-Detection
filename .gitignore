@@ -22,7 +22,10 @@ venv/
 env/
 backend/venv/
 backend/nltk_data/
-backend/data/
+backend/data/*
+!backend/data/README.md
+backend/models/*
+!backend/models/README.md
 backend/*.log
 
 # Environment files
