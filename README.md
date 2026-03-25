@@ -4,9 +4,7 @@ Fake News Detector is a full-stack web application that analyzes news content an
 
 The system supports two main input modes: users can either paste article text directly into the web interface or submit a public article URL for backend scraping and analysis. After a prediction is made, the application returns the predicted label, confidence score, class probabilities, and influential keywords that help explain why the model leaned toward fake or real news. Each analysis is stored in the history database so the dashboard can show recent activity, usage patterns, and retraining readiness.
 
-In addition to live prediction, the project also includes an offline training pipeline and a feedback loop for model improvement. The base model is trained from the news dataset stored in `backend/data/`, while verified history labels can later be reused for retraining without changing the fixed validation holdout. This makes the repository not just a demo UI, but a small end-to-end ML product that covers preprocessing, inference, persistence, explainability, evaluation, and iterative model updates.
-
-The repository currently focuses on the web application. The Android/mobile work has been removed, and the active codebase is organized around:
+The repository currently focuses on the web application. The codebase is organized around:
 
 - `frontend/` for the web UI
 - `backend/` for the API, ML pipeline, SQLite history, and retraining logic
