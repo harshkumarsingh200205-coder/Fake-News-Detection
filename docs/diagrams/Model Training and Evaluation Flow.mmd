@@ -1,0 +1,10 @@
+flowchart TD
+    Start[train.py main] --> LoadData[load_dataset<br/>Load Fake.csv and True.csv]
+    LoadData --> Merge[Merge Datasets<br/>Assign Labels<br/>Build full_text]
+    Merge --> Prep[preprocess_dataset<br/>Text Preprocessing]
+    Prep --> Split[build_training_splits<br/>Train/Validation Split]
+    Split --> Fit[FakeNewsModel.fit<br/>Train TF-IDF + Logistic Regression]
+    Fit --> Evaluate[evaluate fixed holdout<br/>Calculate Metrics]
+    Evaluate --> SaveModel[save fake_news_model.joblib]
+    Evaluate --> SaveMetrics[save model_metrics.json]
+    Split --> SaveSplits[save training_splits.joblib]

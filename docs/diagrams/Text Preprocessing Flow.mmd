@@ -1,0 +1,9 @@
+flowchart TD
+    Input[Raw Text Input] --> Clean[Text Cleaning<br/>Remove HTML, URLs, Emails]
+    Clean --> Lowercase[Lowercasing]
+    Lowercase --> Punct[Punctuation Removal]
+    Punct --> Tokenize[Tokenization<br/>Word Tokenization]
+    Tokenize --> Stopwords[Stopword Removal]
+    Stopwords --> Lemmatize[Lemmatization<br/>Optional]
+    Lemmatize --> Filter[Filter Short Words<br/>Min Length 2]
+    Filter --> Output[Processed Text Output]

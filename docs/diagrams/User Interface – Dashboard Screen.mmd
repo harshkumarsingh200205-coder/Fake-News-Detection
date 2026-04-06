@@ -1,0 +1,15 @@
+flowchart TD
+    Header[Header<br/>Dashboard]
+    Metrics[Model Metrics<br/>Accuracy, Precision, Recall, F1]
+    Charts[Charts<br/>Prediction Distribution<br/>Confidence Scores]
+    HistoryStats[History Statistics<br/>Total Predictions<br/>Verified Samples]
+    RetrainStatus[Retraining Status<br/>Should Retrain?<br/>Current Samples]
+    RetrainButton[Manual Retrain Button]
+    DownloadReport[Download Report Button]
+
+    Header --> Metrics
+    Header --> Charts
+    Header --> HistoryStats
+    Header --> RetrainStatus
+    RetrainStatus --> RetrainButton
+    Header --> DownloadReport

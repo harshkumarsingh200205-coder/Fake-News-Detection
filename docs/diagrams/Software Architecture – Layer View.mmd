@@ -1,0 +1,7 @@
+flowchart TD
+    Presentation[Presentation Layer<br/>Next.js UI<br/>React Components<br/>User Interaction]
+    Application[Application Layer<br/>FastAPI<br/>Business Logic<br/>API Endpoints<br/>Request Handling]
+    Data[Data Layer<br/>SQLite Database<br/>Model Artifacts<br/>CSV Datasets<br/>File Storage]
+
+    Presentation --> Application
+    Application --> Data

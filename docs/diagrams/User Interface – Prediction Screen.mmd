@@ -1,0 +1,13 @@
+flowchart TD
+    Header[Header<br/>Fake News Detector Title]
+    Tabs[Tabs<br/>Text Analysis | URL Analysis]
+    TextInput[Text Input Area<br/>Textarea for News Text]
+    SubmitButton[Submit Button<br/>Analyze Text]
+    Results[Results Section<br/>Prediction: Real/Fake<br/>Confidence: XX%<br/>Keywords List]
+    History[History Section<br/>Recent Predictions]
+
+    Header --> Tabs
+    Tabs --> TextInput
+    TextInput --> SubmitButton
+    SubmitButton --> Results
+    Results --> History

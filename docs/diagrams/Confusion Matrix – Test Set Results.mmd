@@ -1,0 +1,11 @@
+flowchart TD
+    CM[Confusion Matrix<br/>Test Set Results]
+    CM --> TP[True Positive<br/>Predicted Real, Actual Real]
+    CM --> FP[False Positive<br/>Predicted Real, Actual Fake]
+    CM --> FN[False Negative<br/>Predicted Fake, Actual Real]
+    CM --> TN[True Negative<br/>Predicted Fake, Actual Fake]
+
+    TP --> Metrics[Metrics<br/>Accuracy, Precision, Recall, F1]
+    FP --> Metrics
+    FN --> Metrics
+    TN --> Metrics

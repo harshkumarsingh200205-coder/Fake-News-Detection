@@ -1,0 +1,9 @@
+flowchart TD
+    User[User Input] --> WebPage[Next.js Web Page]
+    WebPage --> APIEndpoint[FastAPI Endpoint]
+    APIEndpoint --> Preprocessing[Text Preprocessing]
+    Preprocessing --> Inference[TF-IDF + Logistic Regression Inference]
+    Inference --> Keywords[Keyword Explanation]
+    Keywords --> Persistence[SQLite History Persistence]
+    Persistence --> Verification[Optional Verification]
+    Verification --> Retraining[Optional Retraining]

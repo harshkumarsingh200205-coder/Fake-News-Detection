@@ -1,0 +1,16 @@
+flowchart LR
+    User[End user]
+    Frontend[Next.js app]
+    API[FastAPI app]
+    Predictor[Inference pipeline]
+    DB[(SQLite history)]
+    Artifacts[(Model artifacts)]
+    Dataset[(CSV dataset)]
+
+    User --> Frontend
+    Frontend --> API
+    API --> Predictor
+    API --> DB
+    Predictor --> Artifacts
+    API --> Artifacts
+    API --> Dataset

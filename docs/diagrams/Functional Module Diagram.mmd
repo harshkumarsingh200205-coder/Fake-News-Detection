@@ -1,0 +1,9 @@
+flowchart TD
+    UI[User Interface<br/>Next.js Frontend] --> API[API Layer<br/>FastAPI Backend]
+    API --> Inference[Inference Engine<br/>Prediction & Scraping]
+    API --> Storage[Data Storage<br/>SQLite Database]
+    API --> Training[Model Training<br/>Offline & Retraining]
+    Inference --> Model[ML Model<br/>TF-IDF + Logistic Regression]
+    Training --> Model
+    Storage --> History[Prediction History<br/>& Verification]
+    Training --> History

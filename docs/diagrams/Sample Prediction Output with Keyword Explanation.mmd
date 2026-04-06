@@ -1,0 +1,7 @@
+flowchart TD
+    Output[Prediction Output]
+    Output --> Prediction[Prediction: FAKE]
+    Output --> Confidence[Confidence: 85.2%]
+    Output --> Probabilities[Probabilities<br/>Fake: 85.2%<br/>Real: 14.8%]
+    Output --> Keywords[Keywords<br/>- shocking (fake, 0.45)<br/>- miracle (fake, 0.32)<br/>- according to (real, -0.28)]
+    Output --> Explanation[Explanation<br/>High fake indicators suggest<br/>sensationalist language]

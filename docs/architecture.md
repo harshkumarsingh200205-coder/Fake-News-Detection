@@ -1,4 +1,4 @@
-# Complete Project Report
+# Architecture
 
 ## Project Summary
 
@@ -10,7 +10,7 @@
 - Input modes: pasted article text and article URL scraping
 - Output: label, confidence, class probabilities, keyword explanation, metrics, history, retrain status
 
-## What Is Implemented Today
+## What Is Implemented
 
 The current repository includes:
 
@@ -26,53 +26,56 @@ The trained model artifact is optional at runtime:
 - if `backend/models/fake_news_model.joblib` exists, it is loaded
 - if it does not exist or is invalid, the backend falls back to heuristic demo predictions
 
-## Code Layout
+## System Architecture
+
+At a high level, the project is a web-first full-stack ML application with:
+
+1. a Next.js frontend for the user interface
+2. a FastAPI backend for orchestration and API endpoints
+3. a TF-IDF plus Logistic Regression pipeline for preprocessing, inference, and evaluation
+4. SQLite plus on-disk artifacts for persistence
+
+### Runtime Topology
+
+```mermaid
+flowchart LR
+    User[End user]
+    Frontend[Next.js app]
+    API[FastAPI app]
+    Predictor[Inference pipeline]
+    DB[(SQLite history)]
+    Artifacts[(Model artifacts)]
+    Dataset[(CSV dataset)]
+
+    User --> Frontend
+    Frontend --> API
+    API --> Predictor
+    API --> DB
+    Predictor --> Artifacts
+    API --> Artifacts
+    API --> Dataset
+```
+
+### Codebase Mapping
 
 ```text
-backend/
-  main.py
-  db.py
-  inference.py
-  preprocessing.py
-  model.py
-  train.py
-  generate_plots.py
-  data/
-    Fake.csv
-    True.csv
-  models/
-    README.md
-    confusion_matrix.png
-    dataset_distribution.png
-    keyword_importance.png
-    metrics_plot.png
-  nltk_data/
-  tests/
-
 frontend/
-  src/app/page.tsx
-  src/lib/backend.ts
-  src/components/ui/
-  app/api/
-    health/route.ts
-    history/route.ts
-    history/[id]/verify/route.ts
-    metrics/route.ts
-    predict/route.ts
-    predict-url/route.ts
-    retrain/route.ts
-    retrain-status/route.ts
-  .env.local.example
+  src/app/page.tsx                  -> current main web UI
+  src/lib/backend.ts                -> backend URL resolution and fetch helper
+  app/api/**/route.ts               -> optional Next.js proxy routes
+  src/components/ui/*               -> reusable UI primitives
 
-docs/
-  system-architecture.md
-  flowchart.md
-  pipeline-overview.md
-  frontend-backend-flow.md
-  preprocessing-pipeline.md
-  inference-pipeline.md
-  history-persistence-pipeline.md
-  training-retraining-pipeline.md
+backend/
+  main.py                           -> FastAPI entrypoint and endpoint orchestration
+  db.py                             -> SQLite schema and query helpers
+  inference.py                      -> prediction pipeline and URL scraping
+  preprocessing.py                  -> text cleanup and normalization
+  model.py                          -> TF-IDF + Logistic Regression wrapper
+  train.py                          -> offline training and verified retraining
+  data/                             -> dataset CSVs
+  models/                           -> model artifact, metrics, plots, training split
+  nltk_data/                        -> NLTK resources
+  tests/                            -> unit tests
 ```
 
 ## Backend Responsibilities
@@ -261,53 +264,6 @@ Client calls POST /retrain
 ```
 
 Auto-retraining is only checked periodically. By default, the check runs after every `50` successful predictions.
-
-## Local Development
-
-### Setup
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
-```
-
-### Run both apps
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\dev.ps1
-```
-
-### Run local checks
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\check.ps1
-```
-
-The setup script creates `backend/.env` from `backend/.env.example` and `frontend/.env.local` from `frontend/.env.local.example` when those files are missing.
-
-## Environment Variables
-
-### Frontend
-
-```env
-BACKEND_URL=http://127.0.0.1:8000
-```
-
-### Backend
-
-```env
-FAKE_NEWS_DB_FILENAME=fake_news_history.db
-FAKE_NEWS_AUTO_RETRAIN_CHECK_INTERVAL=50
-FAKE_NEWS_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-```
-
-## Focused Pipeline Docs
-
-- [pipeline-overview.md](pipeline-overview.md)
-- [frontend-backend-flow.md](frontend-backend-flow.md)
-- [preprocessing-pipeline.md](preprocessing-pipeline.md)
-- [inference-pipeline.md](inference-pipeline.md)
-- [history-persistence-pipeline.md](history-persistence-pipeline.md)
-- [training-retraining-pipeline.md](training-retraining-pipeline.md)
 
 ## Known Constraints
 

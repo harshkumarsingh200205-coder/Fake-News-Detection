@@ -1,0 +1,10 @@
+flowchart TD
+    ProcessedText[Processed Text] --> CheckModel{Model Fitted?}
+    CheckModel -->|Yes| Predict[Logistic Regression<br/>predict_proba]
+    CheckModel -->|No| Fallback[Mock Prediction<br/>Heuristic Fallback]
+    Predict --> Confidence[Prediction & Confidence]
+    Predict --> Keywords[get_keyword_importance]
+    Keywords --> KeywordList[Top Keywords<br/>Real/Fake Indicators]
+    Confidence --> Response[JSON Response]
+    KeywordList --> Response
+    Fallback --> Response

@@ -1,0 +1,19 @@
+flowchart TD
+    Response[Prediction Response] --> SaveHistory[insert_query_history<br/>Save to SQLite]
+    SaveHistory --> HistoryDb[(SQLite query_history)]
+
+    HistoryDb --> HistoryApi[GET /history<br/>History & Stats]
+    HistoryDb --> VerifyApi[POST /history/{entry_id}/verify<br/>Store Verified Label]
+    VerifyApi --> Verified[verified_label + verified_at]
+
+    Response --> AutoCheck[maybe_auto_retrain<br/>Periodic Check]
+    AutoCheck --> RetrainFlow[run_verified_retraining]
+    Verified --> RetrainFlow
+    ManualRetrain[POST /retrain] --> RetrainFlow
+    StatusApi[GET /training/stats<br/>Retraining Status] --> HistoryDb
+
+    RetrainFlow --> VerifiedData[get_verified_training_data]
+    VerifiedData --> Bundle[build_retraining_bundle<br/>Combine Base + Verified]
+    Bundle --> Train[train_model<br/>Retrain on Combined Data]
+    Train --> SaveModel[save model + metrics<br/>replace_model]
+    SaveModel --> Feedback[Feedback Loop<br/>Improved Model]
