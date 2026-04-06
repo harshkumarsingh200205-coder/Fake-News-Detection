@@ -39,6 +39,29 @@ The repository currently focuses on the web application. The codebase is organiz
 
 ## Architecture
 
+### System Overview
+
+```mermaid
+flowchart LR
+    User[End user]
+    Frontend[Next.js app]
+    API[FastAPI app]
+    Predictor[Inference pipeline]
+    DB[(SQLite history)]
+    Artifacts[(Model artifacts)]
+    Dataset[(CSV dataset)]
+
+    User --> Frontend
+    Frontend --> API
+    API --> Predictor
+    API --> DB
+    Predictor --> Artifacts
+    API --> Artifacts
+    API --> Dataset
+```
+
+### Detailed Data Flow
+
 ```mermaid
 flowchart LR
     User[User] --> Frontend[Next.js Frontend]
@@ -50,7 +73,7 @@ flowchart LR
     Retrain --> Model
 ```
 
-See [docs/system-architecture.md](docs/system-architecture.md) for the code-level architecture and [docs/pipeline-overview.md](docs/pipeline-overview.md) for the pipeline map.
+See [docs/architecture.md](docs/architecture.md) for the code-level architecture and [docs/pipeline.md](docs/pipeline.md) for the pipeline map.
 
 ## Repository Structure
 
@@ -72,15 +95,12 @@ See [docs/system-architecture.md](docs/system-architecture.md) for the code-leve
 |   |-- src/lib/
 |   `-- app/api/
 |-- docs/
-|   |-- system-architecture.md
-|   |-- flowchart.md
-|   |-- complete_project_report.md
-|   |-- pipeline-overview.md
-|   |-- frontend-backend-flow.md
-|   |-- preprocessing-pipeline.md
-|   |-- inference-pipeline.md
-|   |-- history-persistence-pipeline.md
-|   `-- training-retraining-pipeline.md
+|   |-- README.md
+|   |-- architecture.md
+|   |-- pipeline.md
+|   |-- api.md
+|   |-- development.md
+|   `-- diagrams/
 |-- scripts/
 |-- .github/workflows/ci.yml
 `-- LICENSE
@@ -259,15 +279,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check.ps1
 
 ## Related Docs
 
-- [docs/system-architecture.md](docs/system-architecture.md)
-- [docs/flowchart.md](docs/flowchart.md)
-- [docs/complete_project_report.md](docs/complete_project_report.md)
-- [docs/pipeline-overview.md](docs/pipeline-overview.md)
-- [docs/frontend-backend-flow.md](docs/frontend-backend-flow.md)
-- [docs/preprocessing-pipeline.md](docs/preprocessing-pipeline.md)
-- [docs/inference-pipeline.md](docs/inference-pipeline.md)
-- [docs/history-persistence-pipeline.md](docs/history-persistence-pipeline.md)
-- [docs/training-retraining-pipeline.md](docs/training-retraining-pipeline.md)
+See [docs/README.md](docs/README.md) for an overview of all documentation.
+
+Main documentation files:
+
+- [Architecture](docs/architecture.md)
+- [Pipeline](docs/pipeline.md)
+- [API Reference](docs/api.md)
+- [Development Guide](docs/development.md)
 
 ## License
 
